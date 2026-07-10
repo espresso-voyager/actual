@@ -42,6 +42,10 @@ export type SyncedPrefs = Partial<
     | `csv-delimiter-${string}`
     // CUSTOM: per-account CSV file encoding (see parse-file.ts CsvEncoding)
     | `csv-encoding-${string}`
+    // CUSTOM: JPY valuation for USD off-budget accounts (M3)
+    | `usd-account-${string}`
+    | 'fx-usdjpy-rate'
+    | 'fx-usdjpy-source'
     | `csv-skip-start-lines-${string}`
     | `csv-skip-end-lines-${string}`
     | `csv-in-out-mode-${string}`

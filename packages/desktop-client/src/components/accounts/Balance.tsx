@@ -23,6 +23,8 @@ import { useSelectedItems } from '#hooks/useSelected';
 import { useSheetValue } from '#hooks/useSheetValue';
 import type { Binding } from '#spreadsheet';
 
+import { UsdValuation } from './UsdValuation';
+
 type DetailedBalanceProps = {
   name: string;
   balance: number;
@@ -257,6 +259,9 @@ export function Balances({
           }}
         />
       </Button>
+
+      {/* CUSTOM: JPY valuation for USD off-budget accounts */}
+      <UsdValuation account={account} balanceQuery={balanceQuery} />
 
       {showExtraBalances && <MoreBalances balanceQuery={balanceQuery} />}
 
