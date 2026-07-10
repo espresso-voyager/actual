@@ -234,4 +234,36 @@ describe('File import', () => {
     expect(errors.length).toBe(0);
     expect(await getTransactions('one')).toMatchSnapshot();
   });
+
+  // CUSTOM: Shift-JIS (CP932) encoded CSV import
+  test('Shift-JIS encoded CSV parses Japanese payees correctly', async () => {
+    global.restoreDateNow();
+    const { errors, transactions } = await parseFile(
+      __dirname + '/../../../mocks/files/shift-jis.csv',
+      { hasHeaderRow: true, encoding: 'shift_jis' },
+    );
+    global.restoreFakeDateNow();
+
+    expect(errors.length).toBe(0);
+    expect(transactions).toHaveLength(3);
+    expect(transactions[0]['お支払い先']).toBe('セブン－イレブン渋谷店');
+    expect(transactions[0]['メモ']).toBe('コーヒー');
+    expect(transactions[1]['お支払い先']).toBe('株式会社イオン');
+    expect(transactions[2]['お支払い先']).toBe('給与振込　カブシキガイシャ');
+    expect(transactions[2]['金額']).toBe('250000');
+  });
+
+  test('Shift-JIS CSV parsed without encoding option produces mojibake', async () => {
+    global.restoreDateNow();
+    const { transactions } = await parseFile(
+      __dirname + '/../../../mocks/files/shift-jis.csv',
+      { hasHeaderRow: false },
+    );
+    global.restoreFakeDateNow();
+
+    // Sanity check that the encoding option is actually load-bearing: the
+    // same file read as UTF-8 must NOT contain the correctly decoded payee.
+    const flat = JSON.stringify(transactions);
+    expect(flat).not.toContain('セブン－イレブン渋谷店');
+  });
 });

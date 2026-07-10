@@ -40,6 +40,8 @@ export type SyncedPrefs = Partial<
     | `import-reimport-deleted-${string}`
     | `csv-mappings-${string}`
     | `csv-delimiter-${string}`
+    // CUSTOM: per-account CSV file encoding (see parse-file.ts CsvEncoding)
+    | `csv-encoding-${string}`
     | `csv-skip-start-lines-${string}`
     | `csv-skip-end-lines-${string}`
     | `csv-in-out-mode-${string}`

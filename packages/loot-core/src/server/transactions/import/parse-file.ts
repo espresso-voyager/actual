@@ -65,6 +65,10 @@ export type ParseFileResult = {
   transactions?: Transaction[];
 };
 
+// CUSTOM: encodings selectable for CSV import; decoded via TextDecoder,
+// which implements 'shift_jis' as windows-31j (CP932) per the WHATWG spec.
+export type CsvEncoding = 'utf8' | 'shift_jis';
+
 export type ParseFileOptions = {
   hasHeaderRow?: boolean;
   delimiter?: string;
@@ -73,6 +77,7 @@ export type ParseFileOptions = {
   skipStartLines?: number;
   skipEndLines?: number;
   importNotes?: boolean;
+  encoding?: CsvEncoding;
 };
 
 export async function parseFile(
@@ -112,7 +117,22 @@ async function parseCSV(
   options: ParseFileOptions,
 ): Promise<ParseFileResult> {
   const errors = Array<ParseError>();
-  let contents = await fs.readFile(filepath);
+
+  let contents: string;
+  if (options.encoding && options.encoding !== 'utf8') {
+    const raw = await fs.readFile(filepath, 'binary');
+    try {
+      contents = new TextDecoder(options.encoding).decode(raw);
+    } catch (err) {
+      errors.push({
+        message: 'Failed decoding file with encoding: ' + options.encoding,
+        internal: err.message,
+      });
+      return { errors, transactions: [] };
+    }
+  } else {
+    contents = await fs.readFile(filepath);
+  }
 
   const skipStart = Math.max(0, options.skipStartLines || 0);
   const skipEnd = Math.max(0, options.skipEndLines || 0);
