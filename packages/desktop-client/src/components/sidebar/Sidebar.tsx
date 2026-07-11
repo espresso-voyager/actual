@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useResponsive } from '@actual-app/components/hooks/useResponsive';
 import { SvgAdd } from '@actual-app/components/icons/v1';
+import { Input } from '@actual-app/components/input';
 import { styles } from '@actual-app/components/styles';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
@@ -16,6 +17,7 @@ import { FeatureErrorFallback } from '#components/FeatureErrorFallback';
 import { useGlobalPref } from '#hooks/useGlobalPref';
 import { useLocalPref } from '#hooks/useLocalPref';
 import { useResizeObserver } from '#hooks/useResizeObserver';
+import { useSyncedPrefs } from '#hooks/useSyncedPrefs';
 import { replaceModal } from '#modals/modalsSlice';
 import { useDispatch } from '#redux';
 
@@ -38,6 +40,31 @@ export function Sidebar() {
 
   const [sidebarWidthLocalPref, setSidebarWidthLocalPref] =
     useLocalPref('sidebarWidth');
+  // CUSTOM: "Add group" creates an empty sidebar account group
+  const [syncedPrefs, saveSyncedPrefs] = useSyncedPrefs();
+  const [addingGroup, setAddingGroup] = useState(false);
+  function onAddGroup(name: string) {
+    const trimmed = name.trim();
+    if (trimmed !== '') {
+      let stored: string[] = [];
+      try {
+        const parsed: unknown = JSON.parse(
+          syncedPrefs['sidebar-groups'] || '[]',
+        );
+        if (Array.isArray(parsed)) {
+          stored = parsed.filter(g => typeof g === 'string');
+        }
+      } catch {
+        // ignore malformed pref
+      }
+      if (!stored.includes(trimmed)) {
+        saveSyncedPrefs({
+          'sidebar-groups': JSON.stringify([...stored, trimmed]),
+        });
+      }
+    }
+    setAddingGroup(false);
+  }
   const DEFAULT_SIDEBAR_WIDTH = 240;
   const MAX_SIDEBAR_WIDTH = width / 3;
   const MIN_SIDEBAR_WIDTH = 200;
@@ -126,8 +153,26 @@ export function Sidebar() {
 
             <Accounts />
 
+            {/* CUSTOM: Add group sits directly above Add account */}
+            {addingGroup && (
+              <View style={{ margin: '5px 20px 0 20px' }}>
+                <Input
+                  placeholder={t('Group name')}
+                  autoFocus
+                  onEnter={value => onAddGroup(value)}
+                  onBlur={e => onAddGroup(e.currentTarget.value)}
+                  onEscape={() => setAddingGroup(false)}
+                  style={{ fontSize: 13, padding: '2px 6px' }}
+                />
+              </View>
+            )}
             <SecondaryButtons
               buttons={[
+                {
+                  title: t('Add group'),
+                  Icon: SvgAdd,
+                  onClick: () => setAddingGroup(true),
+                },
                 {
                   title: t('Add account'),
                   Icon: SvgAdd,

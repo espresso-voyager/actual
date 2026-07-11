@@ -63,8 +63,11 @@ type AccountProps<FieldName extends SheetFields<'account'>> = {
   onDragChange?: OnDragChangeCallback<{ id: string }>;
   onDrop?: OnDropCallback;
   // CUSTOM: when set on a title row, the header itself accepts account drops
-  // and reports this id as the drop target (used for sidebar group headers)
+  // and reports this id as the drop target (used for sidebar group headers);
+  // headers are also draggable (to reorder groups) and renameable via the
+  // context menu when onRenameGroup is provided.
   dropGroupId?: string;
+  onRenameGroup?: (newName: string) => void;
   titleAccount?: boolean;
   isExactPathMatch?: boolean;
   balanceTestId?: string;
@@ -84,6 +87,7 @@ export function Account<FieldName extends SheetFields<'account'>>({
   onDragChange,
   onDrop,
   dropGroupId,
+  onRenameGroup,
   titleAccount,
   isExactPathMatch,
   balanceTestId,
@@ -100,24 +104,26 @@ export function Account<FieldName extends SheetFields<'account'>>({
 
   const triggerRef = useRef(null);
 
+  // CUSTOM: group headers are draggable too (type 'sidebar-group') so whole
+  // groups can be reordered.
   const { dragRef } = useDraggable({
-    type,
+    type: account ? type : 'sidebar-group',
     onDragChange,
-    item: { id: account && account.id },
-    canDrag: account != null,
+    item: { id: account ? account.id : dropGroupId },
+    canDrag: account != null || dropGroupId != null,
   });
   const handleDragRef = useDragRef(dragRef);
 
   // CUSTOM: open account rows accept BOTH on- and off-budget drags so
   // accounts can move between sidebar groups regardless of budget status;
-  // group header rows (dropGroupId) accept them too.
+  // group header rows (dropGroupId) accept those plus group drags.
   const { dropRef, dropPos } = useDroppable({
     types: account
       ? account.closed
         ? [type]
         : ['account-onbudget', 'account-offbudget']
       : dropGroupId
-        ? ['account-onbudget', 'account-offbudget']
+        ? ['account-onbudget', 'account-offbudget', 'sidebar-group']
         : [],
     id: account ? account.id : dropGroupId,
     onDrop,
@@ -147,28 +153,37 @@ export function Account<FieldName extends SheetFields<'account'>>({
         typeof i === 'object' && 'name' in i && i.name.startsWith('account-'),
     ),
   );
+  // CUSTOM: group headers get a right-click Rename via onRenameGroup
   useContextMenu({
     triggerRef,
-    enabled: account && needsTooltip,
-    items: [
-      {
-        name: 'account-rename',
-        text: t('Rename'),
-        onClick: () => setIsEditing(true),
-      },
-      account?.closed
-        ? {
-            name: 'account-reopen',
-            text: t('Reopen'),
-            onClick: () => reopenAccount.mutate({ id: account.id }),
-          }
-        : {
-            name: 'account-close',
-            text: t('Close'),
-            onClick: () =>
-              dispatch(openAccountCloseModal({ accountId: account.id })),
+    enabled: (account && needsTooltip) || (!account && onRenameGroup != null),
+    items: account
+      ? [
+          {
+            name: 'account-rename',
+            text: t('Rename'),
+            onClick: () => setIsEditing(true),
           },
-    ],
+          account?.closed
+            ? {
+                name: 'account-reopen',
+                text: t('Reopen'),
+                onClick: () => reopenAccount.mutate({ id: account.id }),
+              }
+            : {
+                name: 'account-close',
+                text: t('Close'),
+                onClick: () =>
+                  dispatch(openAccountCloseModal({ accountId: account.id })),
+              },
+        ]
+      : [
+          {
+            name: 'account-rename',
+            text: t('Rename group'),
+            onClick: () => setIsEditing(true),
+          },
+        ],
   });
 
   const accountRow = (
@@ -255,12 +270,17 @@ export function Account<FieldName extends SheetFields<'account'>>({
                       onBlur={() => setIsEditing(false)}
                       onEnter={newAccountName => {
                         if (newAccountName.trim() !== '') {
-                          updateAccount.mutate({
-                            account: {
-                              ...account,
-                              name: newAccountName,
-                            },
-                          });
+                          if (account) {
+                            updateAccount.mutate({
+                              account: {
+                                ...account,
+                                name: newAccountName,
+                              },
+                            });
+                          } else {
+                            // CUSTOM: header rows rename the group
+                            onRenameGroup?.(newAccountName.trim());
+                          }
                         }
                         setIsEditing(false);
                       }}

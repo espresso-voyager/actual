@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Input } from '@actual-app/components/input';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import type { AccountEntity } from '@actual-app/core/types/models';
@@ -43,7 +42,6 @@ export function Accounts() {
   const ON_BUDGET_GROUP = 'On budget';
   const INVESTMENTS_GROUP = 'Investments';
   const [prefs, savePrefs] = useSyncedPrefs();
-  const [addingGroup, setAddingGroup] = useState(false);
   const isUsd = (account: AccountEntity) =>
     prefs[`usd-account-${account.id}`] === 'true';
   const badge = (account: AccountEntity) => (isUsd(account) ? '($)' : '(¥)');
@@ -62,25 +60,52 @@ export function Accounts() {
     // ignore malformed pref
   }
 
+  let groupLabels: Record<string, string> = {};
+  try {
+    const parsed: unknown = JSON.parse(prefs['sidebar-group-labels'] || '{}');
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      groupLabels = parsed as Record<string, string>;
+    }
+  } catch {
+    // ignore malformed pref
+  }
+
   const openAccounts = [...onBudgetAccounts, ...offbudgetAccounts];
-  const groupNames = new Set<string>([
-    ON_BUDGET_GROUP,
-    INVESTMENTS_GROUP,
-    ...storedGroups,
-  ]);
   const membersByGroup = new Map<string, AccountEntity[]>();
+  const discovered: string[] = [];
   for (const account of openAccounts) {
     const group = groupFor(account);
-    groupNames.add(group);
+    if (!membersByGroup.has(group)) {
+      discovered.push(group);
+    }
     membersByGroup.set(group, [...(membersByGroup.get(group) || []), account]);
   }
-  const orderedGroups = [
-    ON_BUDGET_GROUP,
-    INVESTMENTS_GROUP,
-    ...[...groupNames]
-      .filter(name => name !== ON_BUDGET_GROUP && name !== INVESTMENTS_GROUP)
-      .sort((a, b) => a.localeCompare(b)),
-  ].map(name => ({ name, items: membersByGroup.get(name) || [] }));
+  // The 'sidebar-groups' pref is the group ORDER; defaults and any groups
+  // discovered from accounts but missing from it are inserted sensibly.
+  const orderedNames: string[] = [...new Set(storedGroups)];
+  if (!orderedNames.includes(INVESTMENTS_GROUP)) {
+    orderedNames.unshift(INVESTMENTS_GROUP);
+  }
+  if (!orderedNames.includes(ON_BUDGET_GROUP)) {
+    orderedNames.unshift(ON_BUDGET_GROUP);
+  }
+  for (const name of discovered.sort((a, b) => a.localeCompare(b))) {
+    if (!orderedNames.includes(name)) {
+      orderedNames.push(name);
+    }
+  }
+  const orderedGroups = orderedNames.map(name => ({
+    name,
+    items: membersByGroup.get(name) || [],
+  }));
+
+  const displayName = (name: string) =>
+    groupLabels[name] ||
+    (name === ON_BUDGET_GROUP
+      ? t('On budget')
+      : name === INVESTMENTS_GROUP
+        ? t('Investments')
+        : name);
 
   // Stable cell key per group membership so balances re-register on change
   const groupKey = (section: string, items: AccountEntity[]) => {
@@ -99,14 +124,51 @@ export function Accounts() {
     });
   }
 
-  function onAddGroup(name: string) {
-    const trimmed = name.trim();
-    if (trimmed !== '' && !groupNames.has(trimmed)) {
-      savePrefs({
-        'sidebar-groups': JSON.stringify([...storedGroups, trimmed]),
-      });
+  function onReorderGroup(
+    draggedName: string,
+    dropPos: 'top' | 'bottom' | null,
+    targetName: string,
+  ) {
+    if (draggedName === targetName) {
+      return;
     }
-    setAddingGroup(false);
+    const order = orderedNames.filter(n => n !== draggedName);
+    const targetIdx = order.indexOf(targetName);
+    if (targetIdx === -1) {
+      return;
+    }
+    order.splice(
+      dropPos === 'bottom' ? targetIdx + 1 : targetIdx,
+      0,
+      draggedName,
+    );
+    savePrefs({ 'sidebar-groups': JSON.stringify(order) });
+  }
+
+  function onRenameGroup(name: string, newName: string) {
+    if (newName === '' || newName === name) {
+      return;
+    }
+    if (name === ON_BUDGET_GROUP || name === INVESTMENTS_GROUP) {
+      // Default groups keep their identity; only the display label changes
+      savePrefs({
+        'sidebar-group-labels': JSON.stringify({
+          ...groupLabels,
+          [name]: newName,
+        }),
+      });
+      return;
+    }
+    // Named groups: true rename — update the order list and every member
+    const updates: Record<string, string> = {
+      'sidebar-groups': JSON.stringify(
+        orderedNames.map(n => (n === name ? newName : n)),
+      ),
+    };
+    for (const account of membersByGroup.get(name) || []) {
+      updates[`sidebar-section-${account.id}`] = newName;
+    }
+    savePrefs(updates);
   }
 
   const getAccountPath = (account: AccountEntity) => `/accounts/${account.id}`;
@@ -136,9 +198,20 @@ export function Accounts() {
     dropPos: 'top' | 'bottom' | null,
     targetId: string,
   ) {
-    // CUSTOM: cross-group drops. Dropping on a group header assigns the
-    // account to that group; dropping on an account in another group moves
-    // it there (plus the usual reorder when budget status matches).
+    // CUSTOM: cross-group drops. A dragged group header reorders groups;
+    // dropping an account on a group header assigns it to that group;
+    // dropping on an account in another group moves it there (plus the
+    // usual reorder when budget status matches).
+    if (id.startsWith('group:')) {
+      if (targetId.startsWith('group:')) {
+        onReorderGroup(
+          id.slice('group:'.length),
+          dropPos,
+          targetId.slice('group:'.length),
+        );
+      }
+      return;
+    }
     const dragged = accounts.find(a => a.id === id);
     if (!dragged) {
       return;
@@ -204,13 +277,7 @@ export function Accounts() {
         {orderedGroups.map(({ name, items }) => (
           <View key={name}>
             <Account
-              name={
-                name === ON_BUDGET_GROUP
-                  ? t('On budget')
-                  : name === INVESTMENTS_GROUP
-                    ? t('Investments')
-                    : name
-              }
+              name={displayName(name)}
               to={
                 name === ON_BUDGET_GROUP
                   ? '/accounts/onbudget'
@@ -233,6 +300,8 @@ export function Accounts() {
               }
               dropGroupId={`group:${name}`}
               onDrop={onReorder}
+              onDragChange={onDragChange}
+              onRenameGroup={newName => onRenameGroup(name, newName)}
               balanceTestId={
                 name === ON_BUDGET_GROUP
                   ? 'sidebar-on-budget-balance'
@@ -259,26 +328,6 @@ export function Accounts() {
             ))}
           </View>
         ))}
-
-        {/* CUSTOM: create a new (initially empty) sidebar group */}
-        {addingGroup ? (
-          <View style={{ margin: '8px 20px 0 20px' }}>
-            <Input
-              placeholder={t('Group name')}
-              autoFocus
-              onEnter={value => onAddGroup(value)}
-              onBlur={e => onAddGroup(e.currentTarget.value)}
-              style={{ fontSize: 13, padding: '2px 6px' }}
-            />
-          </View>
-        ) : (
-          <SecondaryItem
-            style={{ marginTop: 15 }}
-            title={t('Add group')}
-            onClick={() => setAddingGroup(true)}
-            bold
-          />
-        )}
 
         {closedAccounts.length > 0 && (
           <SecondaryItem

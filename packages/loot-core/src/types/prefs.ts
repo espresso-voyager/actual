@@ -50,8 +50,10 @@ export type SyncedPrefs = Partial<
     | `coverage-group-${string}`
     // CUSTOM: sidebar group name for an account (top-level sidebar grouping)
     | `sidebar-section-${string}`
-    // CUSTOM: JSON array of user-created sidebar group names
+    // CUSTOM: JSON array of user-created sidebar group names (also the order)
     | 'sidebar-groups'
+    // CUSTOM: JSON map of display-label overrides for default sidebar groups
+    | 'sidebar-group-labels'
     | `csv-skip-start-lines-${string}`
     | `csv-skip-end-lines-${string}`
     | `csv-in-out-mode-${string}`
