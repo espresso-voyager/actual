@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Input } from '@actual-app/components/input';
-import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import type { AccountEntity } from '@actual-app/core/types/models';
@@ -34,19 +33,24 @@ export function Accounts() {
   const { data: closedAccounts = [] } = useClosedAccounts();
   const syncingAccountIds = useSelector(state => state.account.accountsSyncing);
   // CUSTOM: sidebar groups are fully decoupled from on/off-budget status.
-  // An account's group comes ONLY from its section pref — any account (on- or
-  // off-budget) can live in any named group. Unsectioned accounts fall back
-  // to "On budget" (budgeted) or "Investments" (off-budget). Groups can also
-  // be created empty via "Add group" (stored in the 'sidebar-groups' pref)
-  // and render in order: On budget, Investments, then named groups.
+  // Every open account belongs to exactly one group: its section pref, or a
+  // default by budget status ("On budget" / "Investments"). Any account can
+  // be moved to any group — by drag-and-drop onto another account or a group
+  // header, or via the "Set section" control. "Add group" creates empty
+  // groups (persisted in the 'sidebar-groups' pref). Render order:
+  // On budget, Investments, then named groups alphabetically.
   // Currency is a separate concern: the usd flag only drives the ¥/$ badge.
+  const ON_BUDGET_GROUP = 'On budget';
+  const INVESTMENTS_GROUP = 'Investments';
   const [prefs, savePrefs] = useSyncedPrefs();
   const [addingGroup, setAddingGroup] = useState(false);
   const isUsd = (account: AccountEntity) =>
     prefs[`usd-account-${account.id}`] === 'true';
   const badge = (account: AccountEntity) => (isUsd(account) ? '($)' : '(¥)');
-  const sectionFor = (account: AccountEntity) =>
-    prefs[`sidebar-section-${account.id}`] || '';
+  const defaultGroupFor = (account: AccountEntity) =>
+    account.offbudget ? INVESTMENTS_GROUP : ON_BUDGET_GROUP;
+  const groupFor = (account: AccountEntity) =>
+    prefs[`sidebar-section-${account.id}`] || defaultGroupFor(account);
 
   let storedGroups: string[] = [];
   try {
@@ -58,24 +62,25 @@ export function Accounts() {
     // ignore malformed pref
   }
 
-  const namedGroupNames = new Set<string>(storedGroups);
-  const sectioned = new Map<string, AccountEntity[]>();
-  for (const account of [...onBudgetAccounts, ...offbudgetAccounts]) {
-    const section = sectionFor(account);
-    if (section !== '') {
-      namedGroupNames.add(section);
-      sectioned.set(section, [...(sectioned.get(section) || []), account]);
-    }
+  const openAccounts = [...onBudgetAccounts, ...offbudgetAccounts];
+  const groupNames = new Set<string>([
+    ON_BUDGET_GROUP,
+    INVESTMENTS_GROUP,
+    ...storedGroups,
+  ]);
+  const membersByGroup = new Map<string, AccountEntity[]>();
+  for (const account of openAccounts) {
+    const group = groupFor(account);
+    groupNames.add(group);
+    membersByGroup.set(group, [...(membersByGroup.get(group) || []), account]);
   }
-  const unsectionedOnBudget = onBudgetAccounts.filter(
-    a => sectionFor(a) === '',
-  );
-  const unsectionedOffBudget = offbudgetAccounts.filter(
-    a => sectionFor(a) === '',
-  );
-  const namedGroups = [...namedGroupNames]
-    .sort((a, b) => a.localeCompare(b))
-    .map(name => ({ name, items: sectioned.get(name) || [] }));
+  const orderedGroups = [
+    ON_BUDGET_GROUP,
+    INVESTMENTS_GROUP,
+    ...[...groupNames]
+      .filter(name => name !== ON_BUDGET_GROUP && name !== INVESTMENTS_GROUP)
+      .sort((a, b) => a.localeCompare(b)),
+  ].map(name => ({ name, items: membersByGroup.get(name) || [] }));
 
   // Stable cell key per group membership so balances re-register on change
   const groupKey = (section: string, items: AccountEntity[]) => {
@@ -87,9 +92,16 @@ export function Accounts() {
     return (h >>> 0).toString(36);
   };
 
+  function setAccountGroup(account: AccountEntity, group: string) {
+    savePrefs({
+      [`sidebar-section-${account.id}`]:
+        group === defaultGroupFor(account) ? '' : group,
+    });
+  }
+
   function onAddGroup(name: string) {
     const trimmed = name.trim();
-    if (trimmed !== '' && !namedGroupNames.has(trimmed)) {
+    if (trimmed !== '' && !groupNames.has(trimmed)) {
       savePrefs({
         'sidebar-groups': JSON.stringify([...storedGroups, trimmed]),
       });
@@ -124,6 +136,26 @@ export function Accounts() {
     dropPos: 'top' | 'bottom' | null,
     targetId: string,
   ) {
+    // CUSTOM: cross-group drops. Dropping on a group header assigns the
+    // account to that group; dropping on an account in another group moves
+    // it there (plus the usual reorder when budget status matches).
+    const dragged = accounts.find(a => a.id === id);
+    if (!dragged) {
+      return;
+    }
+    if (targetId.startsWith('group:')) {
+      setAccountGroup(dragged, targetId.slice('group:'.length));
+      return;
+    }
+    const target = accounts.find(a => a.id === targetId);
+    if (target && !target.closed && groupFor(dragged) !== groupFor(target)) {
+      setAccountGroup(dragged, groupFor(target));
+    }
+    if (target && target.offbudget !== dragged.offbudget) {
+      // sort order is bucketed by budget status server-side; skip reordering
+      return;
+    }
+
     let targetIdToMove: string | null = targetId;
     if (dropPos === 'bottom') {
       const idx = accounts.findIndex(a => a.id === targetId) + 1;
@@ -165,105 +197,50 @@ export function Accounts() {
           balanceTestId="sidebar-all-accounts-balance"
         />
 
-        {/* CUSTOM: On budget (unsectioned budgeted accounts), Investments
-            (unsectioned off-budget), then named groups holding ANY account.
-            Every account row carries a ¥/$ currency badge. */}
-        {unsectionedOnBudget.length > 0 && (
-          <Account
-            name={t('On budget')}
-            to="/accounts/onbudget"
-            query={bindings.accountSetBalance(
-              groupKey('__onbudget__', unsectionedOnBudget),
-              unsectionedOnBudget.map(a => a.id),
-            )}
-            style={{
-              fontWeight,
-              marginTop: 13,
-              marginBottom: 5,
-            }}
-            titleAccount
-            balanceTestId="sidebar-on-budget-balance"
-          />
-        )}
-
-        {unsectionedOnBudget.map((account, i) => (
-          <Account
-            key={account.id}
-            name={`${account.name} ${badge(account)}`}
-            account={account}
-            connected={!!account.bank}
-            pending={syncingAccountIds.includes(account.id)}
-            failed={isAccountFailedSync(account)}
-            updated={updatedAccounts.includes(account.id)}
-            to={getAccountPath(account)}
-            query={bindings.accountBalance(account.id)}
-            onDragChange={onDragChange}
-            onDrop={onReorder}
-            outerStyle={makeDropPadding(i)}
-          />
-        ))}
-
-        {unsectionedOffBudget.length > 0 && (
-          <Account
-            name={t('Investments')}
-            to="/accounts/offbudget"
-            query={bindings.accountSetBalance(
-              groupKey('__investments__', unsectionedOffBudget),
-              unsectionedOffBudget.map(a => a.id),
-            )}
-            style={{
-              fontWeight,
-              marginTop: 13,
-              marginBottom: 5,
-            }}
-            titleAccount
-            balanceTestId="sidebar-off-budget-balance"
-          />
-        )}
-
-        {unsectionedOffBudget.map((account, i) => (
-          <Account
-            key={account.id}
-            name={`${account.name} ${badge(account)}`}
-            account={account}
-            connected={!!account.bank}
-            pending={syncingAccountIds.includes(account.id)}
-            failed={isAccountFailedSync(account)}
-            updated={updatedAccounts.includes(account.id)}
-            to={getAccountPath(account)}
-            query={bindings.accountBalance(account.id)}
-            onDragChange={onDragChange}
-            onDrop={onReorder}
-            outerStyle={makeDropPadding(i)}
-          />
-        ))}
-
-        {namedGroups.map(({ name, items }) => (
+        {/* CUSTOM: uniform top-level groups (On budget, Investments, then
+            named groups). Headers are styled identically — including empty
+            groups — and act as drop targets; every account row carries a
+            ¥/$ currency badge. */}
+        {orderedGroups.map(({ name, items }) => (
           <View key={name}>
-            {items.length > 0 ? (
-              <Account
-                name={name}
-                to="/accounts"
-                query={bindings.accountSetBalance(
-                  groupKey(name, items),
-                  items.map(a => a.id),
-                )}
-                style={{
-                  fontWeight,
-                  marginTop: 13,
-                  marginBottom: 5,
-                }}
-                titleAccount
-                isExactPathMatch
-                balanceTestId={`sidebar-group-${name}-balance`}
-              />
-            ) : (
-              <View style={{ marginTop: 13, marginBottom: 5, marginLeft: 20 }}>
-                <Text style={{ fontWeight, color: theme.sidebarItemText }}>
-                  {name}
-                </Text>
-              </View>
-            )}
+            <Account
+              name={
+                name === ON_BUDGET_GROUP
+                  ? t('On budget')
+                  : name === INVESTMENTS_GROUP
+                    ? t('Investments')
+                    : name
+              }
+              to={
+                name === ON_BUDGET_GROUP
+                  ? '/accounts/onbudget'
+                  : name === INVESTMENTS_GROUP
+                    ? '/accounts/offbudget'
+                    : '/accounts'
+              }
+              query={bindings.accountSetBalance(
+                groupKey(name, items),
+                items.length > 0 ? items.map(a => a.id) : ['__empty__'],
+              )}
+              style={{
+                fontWeight,
+                marginTop: 13,
+                marginBottom: 5,
+              }}
+              titleAccount
+              isExactPathMatch={
+                name !== ON_BUDGET_GROUP && name !== INVESTMENTS_GROUP
+              }
+              dropGroupId={`group:${name}`}
+              onDrop={onReorder}
+              balanceTestId={
+                name === ON_BUDGET_GROUP
+                  ? 'sidebar-on-budget-balance'
+                  : name === INVESTMENTS_GROUP
+                    ? 'sidebar-off-budget-balance'
+                    : `sidebar-group-${name}-balance`
+              }
+            />
             {items.map((account, i) => (
               <Account
                 key={account.id}

@@ -62,6 +62,9 @@ type AccountProps<FieldName extends SheetFields<'account'>> = {
   outerStyle?: CSSProperties;
   onDragChange?: OnDragChangeCallback<{ id: string }>;
   onDrop?: OnDropCallback;
+  // CUSTOM: when set on a title row, the header itself accepts account drops
+  // and reports this id as the drop target (used for sidebar group headers)
+  dropGroupId?: string;
   titleAccount?: boolean;
   isExactPathMatch?: boolean;
   balanceTestId?: string;
@@ -80,6 +83,7 @@ export function Account<FieldName extends SheetFields<'account'>>({
   outerStyle,
   onDragChange,
   onDrop,
+  dropGroupId,
   titleAccount,
   isExactPathMatch,
   balanceTestId,
@@ -104,9 +108,18 @@ export function Account<FieldName extends SheetFields<'account'>>({
   });
   const handleDragRef = useDragRef(dragRef);
 
+  // CUSTOM: open account rows accept BOTH on- and off-budget drags so
+  // accounts can move between sidebar groups regardless of budget status;
+  // group header rows (dropGroupId) accept them too.
   const { dropRef, dropPos } = useDroppable({
-    types: account ? [type] : [],
-    id: account && account.id,
+    types: account
+      ? account.closed
+        ? [type]
+        : ['account-onbudget', 'account-offbudget']
+      : dropGroupId
+        ? ['account-onbudget', 'account-offbudget']
+        : [],
+    id: account ? account.id : dropGroupId,
     onDrop,
   });
 

@@ -23,6 +23,7 @@ import { useSelectedItems } from '#hooks/useSelected';
 import { useSheetValue } from '#hooks/useSheetValue';
 import type { Binding } from '#spreadsheet';
 
+import { BudgetStatusTag } from './BudgetStatusTag';
 import { CoverageTag } from './CoverageTag';
 import { CurrencyTag } from './CurrencyTag';
 import { SectionTag } from './SectionTag';
@@ -265,6 +266,9 @@ export function Balances({
 
       {/* CUSTOM: currency toggle (¥/$) */}
       <CurrencyTag account={account} />
+
+      {/* CUSTOM: on/off budget toggle */}
+      <BudgetStatusTag account={account} />
 
       {/* CUSTOM: JPY valuation for USD off-budget accounts */}
       <UsdValuation account={account} balanceQuery={balanceQuery} />

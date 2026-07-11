@@ -93,12 +93,15 @@ async function updateAccount({
   id,
   name,
   last_reconciled,
+  offbudget,
 }: Pick<AccountEntity, 'id' | 'name'> &
-  Partial<Pick<AccountEntity, 'last_reconciled'>>) {
+  // CUSTOM: allow flipping on/off budget after creation
+  Partial<Pick<AccountEntity, 'last_reconciled' | 'offbudget'>>) {
   await db.update('accounts', {
     id,
     name,
     ...(last_reconciled && { last_reconciled }),
+    ...(offbudget !== undefined && { offbudget }),
   });
   return {};
 }
