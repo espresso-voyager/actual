@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import type { AccountEntity } from '@actual-app/core/types/models';
@@ -32,28 +31,44 @@ export function Accounts() {
   const { data: onBudgetAccounts = [] } = useOnBudgetAccounts();
   const { data: closedAccounts = [] } = useClosedAccounts();
   const syncingAccountIds = useSelector(state => state.account.accountsSyncing);
-  // CUSTOM: sidebar sections + currency badges for Investments accounts
+  // CUSTOM: off-budget accounts split into TOP-LEVEL sidebar groups, siblings
+  // of "On budget": unsectioned accounts fall under "Investments"; each named
+  // section (default "US accounts" for USD-flagged accounts) becomes its own
+  // header with a live summed balance. Currency badge (¥/$) on every account.
   const [prefs] = useSyncedPrefs();
   const isUsd = (account: AccountEntity) =>
     prefs[`usd-account-${account.id}`] === 'true';
   const sectionFor = (account: AccountEntity) =>
     prefs[`sidebar-section-${account.id}`] ||
     (isUsd(account) ? t('US accounts') : '');
-  const investmentSections: Array<{ section: string; items: AccountEntity[] }> =
+  const offBudgetGroups: Array<{ section: string; items: AccountEntity[] }> =
     [];
   for (const account of offbudgetAccounts) {
     const section = sectionFor(account);
-    const existing = investmentSections.find(s => s.section === section);
+    const existing = offBudgetGroups.find(s => s.section === section);
     if (existing) {
       existing.items.push(account);
     } else {
-      investmentSections.push({ section, items: [account] });
+      offBudgetGroups.push({ section, items: [account] });
     }
   }
-  // Unsectioned accounts list first, directly under the Investments header
-  investmentSections.sort((a, b) =>
-    a.section === '' ? -1 : b.section === '' ? 1 : 0,
+  // "Investments" (unsectioned) first, then named groups alphabetically
+  offBudgetGroups.sort((a, b) =>
+    a.section === ''
+      ? -1
+      : b.section === ''
+        ? 1
+        : a.section.localeCompare(b.section),
   );
+  // Stable cell key per group membership so balances re-register on change
+  const groupKey = (section: string, items: AccountEntity[]) => {
+    const raw = section + '|' + items.map(a => a.id).join(',');
+    let h = 5381;
+    for (let i = 0; i < raw.length; i++) {
+      h = (h * 33) ^ raw.charCodeAt(i);
+    }
+    return (h >>> 0).toString(36);
+  };
 
   const getAccountPath = (account: AccountEntity) => `/accounts/${account.id}`;
 
@@ -155,39 +170,30 @@ export function Accounts() {
           />
         ))}
 
-        {offbudgetAccounts.length > 0 && (
-          <Account
-            name={t('Investments')}
-            to="/accounts/offbudget"
-            query={bindings.offBudgetAccountBalance()}
-            style={{
-              fontWeight,
-              marginTop: 13,
-              marginBottom: 5,
-            }}
-            titleAccount
-            balanceTestId="sidebar-off-budget-balance"
-          />
-        )}
-
-        {/* CUSTOM: Investments accounts grouped into named sections, with a
-            ¥/$ currency badge per account */}
-        {investmentSections.map(({ section, items }) => (
-          <View key={section || '__unsectioned__'}>
-            {section !== '' && (
-              <View style={{ marginTop: 8, marginBottom: 2, marginLeft: 20 }}>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: theme.sidebarItemText,
-                    opacity: 0.7,
-                  }}
-                >
-                  {section}
-                </Text>
-              </View>
-            )}
+        {/* CUSTOM: top-level off-budget groups — Investments (unsectioned)
+            plus one header per named section, each with its own live total
+            and ¥/$ currency badges on the accounts */}
+        {offBudgetGroups.map(({ section, items }) => (
+          <View key={section || '__investments__'}>
+            <Account
+              name={section === '' ? t('Investments') : section}
+              to="/accounts/offbudget"
+              query={bindings.accountSetBalance(
+                groupKey(section, items),
+                items.map(a => a.id),
+              )}
+              style={{
+                fontWeight,
+                marginTop: 13,
+                marginBottom: 5,
+              }}
+              titleAccount
+              balanceTestId={
+                section === ''
+                  ? 'sidebar-off-budget-balance'
+                  : `sidebar-section-${section}-balance`
+              }
+            />
             {items.map((account, i) => (
               <Account
                 key={account.id}

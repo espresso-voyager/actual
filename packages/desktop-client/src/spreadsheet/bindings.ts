@@ -76,6 +76,18 @@ export function offBudgetAccountBalance() {
   } satisfies Binding<'account', 'offbudget-accounts-balance'>;
 }
 
+// CUSTOM: live summed balance over an arbitrary set of accounts, used by the
+// sidebar's top-level account sections (Investments / US accounts / …). The
+// key must change when membership changes so a fresh cell is registered.
+export function accountSetBalance(key: string, ids: AccountEntity['id'][]) {
+  return {
+    name: accountParametrizedField('balance')(`set-${key}`),
+    query: q('transactions')
+      .filter({ 'account.id': { $oneof: ids }, 'account.closed': false })
+      .calculate({ $sum: '$amount' }),
+  } satisfies Binding<'account', 'balance'>;
+}
+
 export function closedAccountBalance() {
   return {
     name: `closed-accounts-balance`,
