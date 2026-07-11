@@ -214,6 +214,8 @@ type AccountInternalProps = {
     | 'uncategorized'
     | undefined;
   filterConditions: RuleConditionEntity[];
+  // CUSTOM: sidebar group display-label overrides (for pseudo-account titles)
+  groupLabels: Record<string, string>;
   showBalances?: boolean;
   setShowBalances: (newValue: boolean) => void;
   showNetWorthChart: boolean;
@@ -928,10 +930,11 @@ class AccountInternal extends PureComponent<
     }
 
     if (!account) {
+      // CUSTOM: pseudo-account pages use the sidebar group names/labels
       if (id === 'onbudget') {
-        return t('On Budget Accounts');
+        return this.props.groupLabels['On budget'] || t('On budget');
       } else if (id === 'offbudget') {
-        return t('Off Budget Accounts');
+        return this.props.groupLabels['Investments'] || t('Investments');
       } else if (id === 'uncategorized') {
         return t('Uncategorized');
       } else if (!id) {
@@ -2036,6 +2039,19 @@ export function Account() {
   const [showExtraBalances, setShowExtraBalances] = useSyncedPref(
     `show-extra-balances-${params.id || 'all-accounts'}`,
   );
+  // CUSTOM: sidebar group display-label overrides for pseudo-account titles
+  const [sidebarGroupLabels] = useSyncedPref('sidebar-group-labels');
+  const groupLabels = useMemo(() => {
+    try {
+      const parsed: unknown = JSON.parse(sidebarGroupLabels || '{}');
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, string>;
+      }
+    } catch {
+      // ignore malformed pref
+    }
+    return {};
+  }, [sidebarGroupLabels]);
   const modalShowing = useSelector(state => state.modals.modalStack.length > 0);
   const accountsSyncing = useSelector(state => state.account.accountsSyncing);
   const filterConditions = location?.state?.filterConditions || [];
@@ -2075,6 +2091,7 @@ export function Account() {
             newTransactions={newTransactions}
             matchedTransactions={matchedTransactions}
             accounts={accounts}
+            groupLabels={groupLabels}
             dateFormat={dateFormat}
             hideFraction={String(hideFraction) === 'true'}
             expandSplits={expandSplits}
