@@ -66,7 +66,7 @@ Note: account owed balances are live totals (all statements), not per-cycle. Sta
 
 ## Custom diffs (M2a.2 — sidebar Investments + income-first budget)
 
-- **Sidebar:** "Off budget" header renamed **Investments** (functionally unchanged — still off-budget). Off-budget accounts split into **top-level sidebar groups**, siblings of "On budget": unsectioned accounts fall under Investments; each named section (set via the "Set section" control on the account header; free text — new name = new group) gets its own header with a **live summed balance** (custom binding `accountSetBalance` in `spreadsheet/bindings.ts`). USD-flagged accounts default to section "US accounts". Every off-budget account shows a **(¥)/($)** currency badge derived from the `usd-account-*` flag.
+- **Sidebar:** "Off budget" header renamed **Investments** (functionally unchanged — still off-budget). Off-budget accounts split into **top-level sidebar groups**, siblings of "On budget": named groups (set via the "Set section" control on the account header; free text — new name = new group) render first, each with a **live summed balance** (custom binding `accountSetBalance` in `spreadsheet/bindings.ts`); unsectioned accounts fall under **Investments**, rendered last. Grouping is independent of currency: the `usd-account-*` flag only drives the **(¥)/($)** badge and JPY valuation.
 - **Budget tab:** the Income group renders **above** the expense groups (spreadsheet order: income first, then allocations).
 
 | File                                                                 | Change                                                                                           |
