@@ -24,6 +24,7 @@ import { useSheetValue } from '#hooks/useSheetValue';
 import type { Binding } from '#spreadsheet';
 
 import { CoverageTag } from './CoverageTag';
+import { CurrencyTag } from './CurrencyTag';
 import { SectionTag } from './SectionTag';
 import { UsdValuation } from './UsdValuation';
 
@@ -261,6 +262,9 @@ export function Balances({
           }}
         />
       </Button>
+
+      {/* CUSTOM: currency toggle (¥/$) */}
+      <CurrencyTag account={account} />
 
       {/* CUSTOM: JPY valuation for USD off-budget accounts */}
       <UsdValuation account={account} balanceQuery={balanceQuery} />

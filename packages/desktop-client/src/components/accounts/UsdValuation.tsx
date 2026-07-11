@@ -50,16 +50,10 @@ export function UsdValuation({ account, balanceQuery }: UsdValuationProps) {
   const savedRate = parseRate(prefs['fx-usdjpy-rate']);
   const rateSource = prefs['fx-usdjpy-source'];
 
+  // The currency flag is set via the CurrencyTag toggle on the account
+  // header; the valuation pill appears automatically on flagged accounts.
   if (!enabled) {
-    return (
-      <Button
-        variant="bare"
-        onPress={() => savePrefs({ [`usd-account-${account.id}`]: 'true' })}
-        style={{ color: theme.pageTextSubdued, fontSize: 12 }}
-      >
-        Show ¥
-      </Button>
-    );
+    return null;
   }
 
   function commitRate(text: string) {

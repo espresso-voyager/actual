@@ -48,8 +48,10 @@ export type SyncedPrefs = Partial<
     | 'fx-usdjpy-source'
     // CUSTOM: budget-header recap bucket tag ('family' | 'personal')
     | `coverage-group-${string}`
-    // CUSTOM: sidebar Investments section name for an off-budget account
+    // CUSTOM: sidebar group name for an account (top-level sidebar grouping)
     | `sidebar-section-${string}`
+    // CUSTOM: JSON array of user-created sidebar group names
+    | 'sidebar-groups'
     | `csv-skip-start-lines-${string}`
     | `csv-skip-end-lines-${string}`
     | `csv-in-out-mode-${string}`

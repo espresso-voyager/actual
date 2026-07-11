@@ -22,7 +22,7 @@ export function SectionTag({ account }: SectionTagProps) {
   const [prefs, savePrefs] = useSyncedPrefs();
   const [editing, setEditing] = useState(false);
 
-  if (!account || account.offbudget !== 1) {
+  if (!account) {
     return null;
   }
 
