@@ -21,8 +21,8 @@ import { SheetNameProvider } from '#hooks/useSheetName';
 import { useUndo } from '#hooks/useUndo';
 
 import { BudgetMonthMenu } from './BudgetMonthMenu';
+import { RecapList } from './RecapList';
 import { ToBudget } from './ToBudget';
-import { TotalsList } from './TotalsList';
 
 type BudgetSummaryProps = {
   month: string;
@@ -266,8 +266,8 @@ export const BudgetSummary = memo(({ month }: BudgetSummaryProps) => {
           </View>
         ) : (
           <>
-            <TotalsList
-              prevMonthName={prevMonthName}
+            {/* CUSTOM: spreadsheet-style recap instead of stock TotalsList */}
+            <RecapList
               style={{
                 padding: '5px 0',
                 marginTop: 17,

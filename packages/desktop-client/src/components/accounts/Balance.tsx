@@ -23,6 +23,7 @@ import { useSelectedItems } from '#hooks/useSelected';
 import { useSheetValue } from '#hooks/useSheetValue';
 import type { Binding } from '#spreadsheet';
 
+import { CoverageTag } from './CoverageTag';
 import { UsdValuation } from './UsdValuation';
 
 type DetailedBalanceProps = {
@@ -262,6 +263,9 @@ export function Balances({
 
       {/* CUSTOM: JPY valuation for USD off-budget accounts */}
       <UsdValuation account={account} balanceQuery={balanceQuery} />
+
+      {/* CUSTOM: Family/Personal tag for the budget-header recap */}
+      <CoverageTag account={account} />
 
       {showExtraBalances && <MoreBalances balanceQuery={balanceQuery} />}
 

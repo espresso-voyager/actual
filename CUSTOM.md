@@ -43,6 +43,27 @@ This fork carries a small set of personal customizations on branch `custom/main`
 | `packages/desktop-client/src/components/accounts/fxUsdJpy.ts`      | Added `computeUsdEquivalentCents` and `computeNetWealth` (+5 tests).                                                                                                                                                          |
 | `packages/desktop-client/package.json`                             | One `imports` entry so `#components/accounts/fxUsdJpy` resolves (`#components/*` wildcard only maps `.tsx`).                                                                                                                  |
 
+## Custom diffs (M2a — budget-header recap)
+
+**Spreadsheet-style recap on the Budget tab** — replaces the stock "Available funds / Overspent / Budgeted / For next month" strip in each month's summary with: **Available funds · Family · Personal · Savings**, mirroring the Colucci Dashboard spreadsheet's Kaolucci/Colucci totals.
+
+How the buckets are defined (fully in-app, no code edits to change membership):
+
+- **Accounts** (cards, expense accounts): each account header has an "Add to recap" toggle that cycles untagged → Family → Personal. A tagged account contributes its **owed balance** (−balance).
+- **Categories** (Rent, dues, new activities, savings buckets): create category groups literally named **Family**, **Personal**, **Savings** (case-insensitive) — every category in the group contributes its **envelope balance**. Adding a new activity = adding a category to the group.
+- **Rule to avoid double counting**: only put bank-paid categories in the Family/Personal groups. Card-paid spending is already counted through the tagged card's owed balance.
+
+| File                                                                                              | Change                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/desktop-client/src/components/budget/envelope/budgetsummary/RecapList.tsx`              | The recap strip (renders in place of `TotalsList` in the expanded month summary; the stock TotalsList still exists and still backs the To Budget tooltip). |
+| `packages/desktop-client/src/components/budget/envelope/budgetsummary/recap.ts` + `recap.test.ts` | Pure helpers: `accountIdsForBucket`, `owedCents`, `findGroupIdByName` (7 tests).                                                                           |
+| `packages/desktop-client/src/components/accounts/CoverageTag.tsx`                                 | The "Add to recap" cycle toggle on account headers.                                                                                                        |
+| `packages/desktop-client/src/components/budget/envelope/budgetsummary/BudgetSummary.tsx`          | Two-line swap: renders `RecapList` instead of `TotalsList`.                                                                                                |
+| `packages/desktop-client/src/components/accounts/Balance.tsx`                                     | One insertion for `CoverageTag`.                                                                                                                           |
+| `packages/loot-core/src/types/prefs.ts`                                                           | Synced pref key `coverage-group-${accountId}`.                                                                                                             |
+
+Note: account owed balances are live totals (all statements), not per-cycle. Statement-cycle windows (10th→9th) remain the M2b follow-up.
+
 All custom code is marked with `// CUSTOM:` comments to make diffs greppable: `git grep -n "CUSTOM:"`.
 
 ## Upstream rebase procedure

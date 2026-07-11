@@ -46,6 +46,8 @@ export type SyncedPrefs = Partial<
     | `usd-account-${string}`
     | 'fx-usdjpy-rate'
     | 'fx-usdjpy-source'
+    // CUSTOM: budget-header recap bucket tag ('family' | 'personal')
+    | `coverage-group-${string}`
     | `csv-skip-start-lines-${string}`
     | `csv-skip-end-lines-${string}`
     | `csv-in-out-mode-${string}`
