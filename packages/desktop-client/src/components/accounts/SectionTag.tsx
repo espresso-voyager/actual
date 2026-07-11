@@ -1,9 +1,8 @@
-// CUSTOM: assigns an Investments (off-budget) account to a named sidebar
-// section (e.g. "US accounts"). Free text — typing a new name creates a new
-// section, clearing it removes the account from any section. Stored as the
-// synced pref `sidebar-section-${accountId}` and consumed by the sidebar's
-// Investments list. USD-flagged accounts default to "US accounts" until an
-// explicit section is set.
+// CUSTOM: assigns an off-budget account to a named top-level sidebar group
+// (e.g. "US accounts"). Free text — typing a new name creates a new group,
+// clearing it returns the account to the default "Investments" group. Stored
+// as the synced pref `sidebar-section-${accountId}`. Independent of the
+// account's currency flag.
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -27,9 +26,7 @@ export function SectionTag({ account }: SectionTagProps) {
     return null;
   }
 
-  const current =
-    prefs[`sidebar-section-${account.id}`] ||
-    (prefs[`usd-account-${account.id}`] === 'true' ? t('US accounts') : '');
+  const current = prefs[`sidebar-section-${account.id}`] || '';
 
   function commit(value: string) {
     if (account) {

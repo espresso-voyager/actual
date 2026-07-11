@@ -32,15 +32,15 @@ export function Accounts() {
   const { data: closedAccounts = [] } = useClosedAccounts();
   const syncingAccountIds = useSelector(state => state.account.accountsSyncing);
   // CUSTOM: off-budget accounts split into TOP-LEVEL sidebar groups, siblings
-  // of "On budget": unsectioned accounts fall under "Investments"; each named
-  // section (default "US accounts" for USD-flagged accounts) becomes its own
-  // header with a live summed balance. Currency badge (¥/$) on every account.
+  // of "On budget". Grouping is controlled ONLY by the per-account section
+  // pref (currency is a separate concern — the usd flag just drives the ¥/$
+  // badge). Order: named sections (e.g. "US accounts") first, then the
+  // unsectioned catch-all "Investments" last.
   const [prefs] = useSyncedPrefs();
   const isUsd = (account: AccountEntity) =>
     prefs[`usd-account-${account.id}`] === 'true';
   const sectionFor = (account: AccountEntity) =>
-    prefs[`sidebar-section-${account.id}`] ||
-    (isUsd(account) ? t('US accounts') : '');
+    prefs[`sidebar-section-${account.id}`] || '';
   const offBudgetGroups: Array<{ section: string; items: AccountEntity[] }> =
     [];
   for (const account of offbudgetAccounts) {
@@ -52,12 +52,12 @@ export function Accounts() {
       offBudgetGroups.push({ section, items: [account] });
     }
   }
-  // "Investments" (unsectioned) first, then named groups alphabetically
+  // Named groups first (alphabetically), "Investments" (unsectioned) last
   offBudgetGroups.sort((a, b) =>
     a.section === ''
-      ? -1
+      ? 1
       : b.section === ''
-        ? 1
+        ? -1
         : a.section.localeCompare(b.section),
   );
   // Stable cell key per group membership so balances re-register on change
