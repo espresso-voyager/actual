@@ -26,6 +26,7 @@ import type { Binding } from '#spreadsheet';
 import { BudgetStatusTag } from './BudgetStatusTag';
 import { CoverageTag } from './CoverageTag';
 import { CurrencyTag } from './CurrencyTag';
+import { CycleInfo } from './CycleInfo';
 import { SectionTag } from './SectionTag';
 import { UsdValuation } from './UsdValuation';
 
@@ -269,6 +270,9 @@ export function Balances({
 
       {/* CUSTOM: on/off budget toggle */}
       <BudgetStatusTag account={account} />
+
+      {/* CUSTOM: statement cycle (M2): due vs new-this-cycle */}
+      <CycleInfo account={account} />
 
       {/* CUSTOM: JPY valuation for USD off-budget accounts */}
       <UsdValuation account={account} balanceQuery={balanceQuery} />

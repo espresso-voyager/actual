@@ -48,6 +48,9 @@ export type SyncedPrefs = Partial<
     | 'fx-usdjpy-source'
     // CUSTOM: budget-header recap bucket tag ('family' | 'personal')
     | `coverage-group-${string}`
+    // CUSTOM: statement cycle (M2): close day 1-31 (31=end of month), pay day
+    | `cycle-close-day-${string}`
+    | `cycle-pay-day-${string}`
     // CUSTOM: sidebar group name for an account (top-level sidebar grouping)
     | `sidebar-section-${string}`
     // CUSTOM: JSON array of user-created sidebar group names (also the order)

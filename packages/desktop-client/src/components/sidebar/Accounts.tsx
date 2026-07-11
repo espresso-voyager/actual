@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import type { AccountEntity } from '@actual-app/core/types/models';
 
 import { useMoveAccountMutation } from '#accounts';
 import { isAccountFailedSync } from '#accounts/syncStatus';
+import {
+  parseCycleDay,
+  useCycleAmounts,
+} from '#components/accounts/useCycleAmounts';
+import { PrivacyFilter } from '#components/PrivacyFilter';
 import { useAccounts } from '#hooks/useAccounts';
 import { useClosedAccounts } from '#hooks/useClosedAccounts';
+import { useFormat } from '#hooks/useFormat';
 import { useLocalPref } from '#hooks/useLocalPref';
 import { useOffBudgetAccounts } from '#hooks/useOffBudgetAccounts';
 import { useOnBudgetAccounts } from '#hooks/useOnBudgetAccounts';
@@ -21,6 +28,45 @@ import { Account } from './Account';
 import { SecondaryItem } from './SecondaryItem';
 
 const fontWeight = 600;
+
+// CUSTOM: compact "due M/D · amount" line under accounts with a statement
+// cycle configured (see components/accounts/CycleInfo.tsx for the config)
+function CycleDueLine({ account }: { account: AccountEntity }) {
+  const format = useFormat();
+  const [prefs] = useSyncedPrefs();
+  const closeDay = parseCycleDay(prefs[`cycle-close-day-${account.id}`]);
+  const payDay = parseCycleDay(prefs[`cycle-pay-day-${account.id}`]);
+  const amounts = useCycleAmounts(account.id, closeDay, payDay);
+
+  if (amounts == null || amounts.due === 0) {
+    return null;
+  }
+  const [, m, d] = amounts.payDate.split('-');
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        paddingRight: 15,
+        marginTop: -4,
+        marginBottom: 2,
+      }}
+    >
+      <PrivacyFilter>
+        <Text
+          style={{
+            fontSize: 11,
+            color: theme.sidebarItemText,
+            opacity: 0.65,
+          }}
+        >
+          due {parseInt(m, 10)}/{parseInt(d, 10)} ·{' '}
+          {format(amounts.due, 'financial')}
+        </Text>
+      </PrivacyFilter>
+    </View>
+  );
+}
 
 export function Accounts() {
   const { t } = useTranslation();
@@ -317,20 +363,22 @@ export function Accounts() {
               }
             />
             {items.map((account, i) => (
-              <Account
-                key={account.id}
-                name={`${account.name} ${badge(account)}`}
-                account={account}
-                connected={!!account.bank}
-                pending={syncingAccountIds.includes(account.id)}
-                failed={isAccountFailedSync(account)}
-                updated={updatedAccounts.includes(account.id)}
-                to={getAccountPath(account)}
-                query={bindings.accountBalance(account.id)}
-                onDragChange={onDragChange}
-                onDrop={onReorder}
-                outerStyle={makeDropPadding(i)}
-              />
+              <View key={account.id}>
+                <Account
+                  name={`${account.name} ${badge(account)}`}
+                  account={account}
+                  connected={!!account.bank}
+                  pending={syncingAccountIds.includes(account.id)}
+                  failed={isAccountFailedSync(account)}
+                  updated={updatedAccounts.includes(account.id)}
+                  to={getAccountPath(account)}
+                  query={bindings.accountBalance(account.id)}
+                  onDragChange={onDragChange}
+                  onDrop={onReorder}
+                  outerStyle={makeDropPadding(i)}
+                />
+                <CycleDueLine account={account} />
+              </View>
             ))}
           </View>
         ))}

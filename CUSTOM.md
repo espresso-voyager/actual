@@ -62,7 +62,25 @@ How the buckets are defined (fully in-app, no code edits to change membership):
 | `packages/desktop-client/src/components/accounts/Balance.tsx`                                     | One insertion for `CoverageTag`.                                                                                                                           |
 | `packages/loot-core/src/types/prefs.ts`                                                           | Synced pref key `coverage-group-${accountId}`.                                                                                                             |
 
-Note: account owed balances are live totals (all statements), not per-cycle. Statement-cycle windows (10th→9th) remain the M2b follow-up.
+Note: account owed balances are live totals (all statements), not per-cycle.
+
+## Custom diffs (M2b — statement cycles)
+
+Splits a card/expense account's owed balance into **"statement due"** (the last closed cycle, minus payments made since) and **"new this cycle"** (accrual since the close). Answers "how much must be in the bank for the next debit?" separately from "how much have I spent this cycle?".
+
+- **Config:** per account, on the account page header — "Set cycle" → close day (1–31; 31 = end of month, clamps short months) + pay day. Stored as synced prefs `cycle-close-day-${id}` / `cycle-pay-day-${id}`.
+- **Display:** account page header pill "Due M/D: X · New this cycle: Y"; sidebar shows a compact `due M/D · amount` line under each configured account (hidden when nothing is due).
+- **Math** (`components/accounts/cycle.ts`, tested): due = max(0, owed-at-close − payments-after-close); accrual = new charges after close, reduced by any excess payments. Payments settle oldest debt first. Caveat: refunds after the close count as "payments" (they reduce due, not accrual).
+- Data is read-only aggregation over transactions (three sums via aqlQuery in `useCycleAmounts.ts`); computed on mount, so a hard refresh may be needed after bulk edits. No schema changes.
+
+| File                                                                 | Change                                                                  |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `packages/desktop-client/src/components/accounts/cycle.ts` (+ test)  | Pure cycle math: `lastCloseDate`, `nextPayDate`, `computeCycleAmounts`. |
+| `packages/desktop-client/src/components/accounts/useCycleAmounts.ts` | Hook: three aggregate queries → {due, accrual, closeDate, payDate}.     |
+| `packages/desktop-client/src/components/accounts/CycleInfo.tsx`      | Account-header pill + inline cycle config.                              |
+| `packages/desktop-client/src/components/sidebar/Accounts.tsx`        | `CycleDueLine` — compact due line under configured accounts.            |
+| `packages/loot-core/src/types/prefs.ts`                              | New pref keys.                                                          |
+| `packages/desktop-client/package.json`                               | Subpath imports entry for `useCycleAmounts`.                            |
 
 ## Custom diffs (M2a.2 — sidebar Investments + income-first budget)
 
