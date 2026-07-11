@@ -24,6 +24,7 @@ import { useSheetValue } from '#hooks/useSheetValue';
 import type { Binding } from '#spreadsheet';
 
 import { CoverageTag } from './CoverageTag';
+import { SectionTag } from './SectionTag';
 import { UsdValuation } from './UsdValuation';
 
 type DetailedBalanceProps = {
@@ -266,6 +267,9 @@ export function Balances({
 
       {/* CUSTOM: Family/Personal tag for the budget-header recap */}
       <CoverageTag account={account} />
+
+      {/* CUSTOM: sidebar Investments section assignment */}
+      <SectionTag account={account} />
 
       {showExtraBalances && <MoreBalances balanceQuery={balanceQuery} />}
 

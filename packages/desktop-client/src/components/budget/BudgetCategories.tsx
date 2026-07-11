@@ -91,7 +91,7 @@ export const BudgetCategories = memo<BudgetCategoriesProps>(
     const items: BudgetItem[] = useMemo(() => {
       const [expenseGroups, incomeGroup] = separateGroups(categoryGroups);
 
-      let items: BudgetItem[] = Array.prototype.concat.apply(
+      const expenseItems: BudgetItem[] = Array.prototype.concat.apply(
         [],
         expenseGroups.map(group => {
           if (group.hidden && !showHiddenCategories) {
@@ -126,15 +126,14 @@ export const BudgetCategories = memo<BudgetCategoriesProps>(
         }),
       );
 
-      if (isAddingGroup) {
-        items.push({ type: 'new-group' });
-      }
-
+      // CUSTOM: income renders ABOVE the expense groups (spreadsheet order:
+      // income first, then allocations).
+      const incomeCategoryItems: BudgetItem[] = [];
       if (incomeGroup) {
-        const incomeCategoryItems: BudgetItem[] = [
+        incomeCategoryItems.push(
           { type: 'income-separator' },
           { type: 'income-group', value: incomeGroup },
-        ];
+        );
 
         if (newCategoryForGroup === incomeGroup.id) {
           incomeCategoryItems.push({ type: 'new-category' });
@@ -153,8 +152,12 @@ export const BudgetCategories = memo<BudgetCategoriesProps>(
             }),
           ),
         );
+      }
 
-        items = items.concat(incomeCategoryItems);
+      const items: BudgetItem[] = incomeCategoryItems.concat(expenseItems);
+
+      if (isAddingGroup) {
+        items.push({ type: 'new-group' });
       }
 
       return items;

@@ -64,6 +64,19 @@ How the buckets are defined (fully in-app, no code edits to change membership):
 
 Note: account owed balances are live totals (all statements), not per-cycle. Statement-cycle windows (10th→9th) remain the M2b follow-up.
 
+## Custom diffs (M2a.2 — sidebar Investments + income-first budget)
+
+- **Sidebar:** "Off budget" header renamed **Investments** (functionally unchanged — still off-budget). Investments accounts group under named **sections**: each off-budget account header has a "Set section" control (free text; new name = new section, empty = unsectioned). USD-flagged accounts default to section "US accounts". Every Investments account shows a **(¥)/($)** currency badge derived from the `usd-account-*` flag.
+- **Budget tab:** the Income group renders **above** the expense groups (spreadsheet order: income first, then allocations).
+
+| File                                                                 | Change                                                                                           |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `packages/desktop-client/src/components/sidebar/Accounts.tsx`        | Rename + section grouping + currency badges.                                                     |
+| `packages/desktop-client/src/components/accounts/SectionTag.tsx`     | "Set section" inline editor on off-budget account headers (pref `sidebar-section-${accountId}`). |
+| `packages/desktop-client/src/components/budget/BudgetCategories.tsx` | Income items prepended instead of appended.                                                      |
+| `packages/desktop-client/src/components/accounts/Balance.tsx`        | One insertion for `SectionTag`.                                                                  |
+| `packages/loot-core/src/types/prefs.ts`                              | Synced pref key `sidebar-section-${accountId}`.                                                  |
+
 All custom code is marked with `// CUSTOM:` comments to make diffs greppable: `git grep -n "CUSTOM:"`.
 
 ## Upstream rebase procedure
