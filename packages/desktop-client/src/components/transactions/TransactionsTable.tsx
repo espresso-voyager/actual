@@ -32,6 +32,7 @@ import {
   SvgArrowDown,
   SvgArrowUp,
   SvgCheveronDown,
+  SvgTrash,
 } from '@actual-app/components/icons/v1';
 import {
   SvgArrowsSynchronize,
@@ -336,6 +337,8 @@ const TransactionHeader = memo(
             }}
           />
         )}
+        {/* CUSTOM: spacer matching the quick-delete column */}
+        <Cell width={24} />
       </Row>
     );
   },
@@ -1877,6 +1880,32 @@ const Transaction = memo(function Transaction({
             onEdit={onEdit}
             onUpdate={onUpdate}
           />
+        )}
+
+        {/* CUSTOM: quick delete button on every committed transaction row */}
+        {!isPreview && !isTemporaryId(transaction.id) ? (
+          <Cell
+            name="quick-delete"
+            width={24}
+            plain
+            style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              userSelect: 'none',
+            }}
+          >
+            <Button
+              variant="bare"
+              className={selected || editing ? undefined : 'hover-visible'}
+              aria-label={t('Delete transaction')}
+              onPress={() => onBatchDelete?.([transaction.id])}
+              style={{ padding: 3, color: theme.pageTextSubdued }}
+            >
+              <SvgTrash width={10} height={10} />
+            </Button>
+          </Cell>
+        ) : (
+          <Cell width={24} />
         )}
 
         <Cell width={5} />
