@@ -32,6 +32,17 @@ This fork carries a small set of personal customizations on branch `custom/main`
 | `packages/desktop-client/src/components/accounts/Balance.tsx`      | One insertion: renders `<UsdValuation>` in the account header balance row.                                                                                                                                                                                                                                                             |
 | `packages/loot-core/src/types/prefs.ts`                            | Synced pref keys: `usd-account-${accountId}` (per-account toggle), `fx-usdjpy-rate`, `fx-usdjpy-source`.                                                                                                                                                                                                                               |
 
+## Custom diffs (M3.5 — Net Wealth card)
+
+**Dual-currency net wealth on the Reports page** — a card above the report dashboard showing total net wealth in BOTH yen and dollars: JPY-native accounts + USD-flagged accounts, cross-converted with the shared USD/JPY rate. Snapshot only (deliberately not the historical net-worth graph, which would need historical rates).
+
+| File                                                               | Change                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/desktop-client/src/components/reports/NetWealthCard.tsx` | New card: sums open-account balances grouped by account via one AQL query, buckets by the `usd-account-*` flag, shows `≈ ¥…` and `≈ $…` plus the rate and its source. Without a saved rate it shows the JPY total and a hint. |
+| `packages/desktop-client/src/components/reports/Overview.tsx`      | One insertion above the dashboard grid.                                                                                                                                                                                       |
+| `packages/desktop-client/src/components/accounts/fxUsdJpy.ts`      | Added `computeUsdEquivalentCents` and `computeNetWealth` (+5 tests).                                                                                                                                                          |
+| `packages/desktop-client/package.json`                             | One `imports` entry so `#components/accounts/fxUsdJpy` resolves (`#components/*` wildcard only maps `.tsx`).                                                                                                                  |
+
 All custom code is marked with `// CUSTOM:` comments to make diffs greppable: `git grep -n "CUSTOM:"`.
 
 ## Upstream rebase procedure

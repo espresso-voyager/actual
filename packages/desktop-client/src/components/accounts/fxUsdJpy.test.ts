@@ -1,5 +1,11 @@
 // CUSTOM: tests for JPY valuation helpers
-import { computeJpyEquivalent, formatJpy, parseRate } from './fxUsdJpy';
+import {
+  computeJpyEquivalent,
+  computeNetWealth,
+  computeUsdEquivalentCents,
+  formatJpy,
+  parseRate,
+} from './fxUsdJpy';
 
 describe('parseRate', () => {
   it('parses a plain decimal rate', () => {
@@ -34,6 +40,45 @@ describe('computeJpyEquivalent', () => {
 
   it('handles zero', () => {
     expect(computeJpyEquivalent(0, 150)).toBe(0);
+  });
+});
+
+describe('computeUsdEquivalentCents', () => {
+  it('converts stored yen units to USD cents', () => {
+    // ¥1,573,200 (stored 157,320,000) at 157.32 → $10,000.00 (1,000,000 cents)
+    expect(computeUsdEquivalentCents(157_320_000, 157.32)).toBe(1_000_000);
+  });
+
+  it('handles negative and zero', () => {
+    expect(computeUsdEquivalentCents(-15_000, 150)).toBe(-100);
+    expect(computeUsdEquivalentCents(0, 150)).toBe(0);
+  });
+});
+
+describe('computeNetWealth', () => {
+  it('cross-converts both buckets with one rate', () => {
+    // JPY accounts: ¥3,000,000 (stored 300,000,000)
+    // USD accounts: $10,000.00 (1,000,000 cents), rate 150
+    const { yen, usdCents } = computeNetWealth(300_000_000, 1_000_000, 150);
+    expect(yen).toBe(3_000_000 + 1_500_000); // ¥4,500,000
+    expect(usdCents).toBe(1_000_000 + 2_000_000); // $30,000.00
+  });
+
+  it('round-trips consistently at the same rate', () => {
+    const { yen, usdCents } = computeNetWealth(300_000_000, 1_000_000, 150);
+    // yen total / rate ≈ usd total (within rounding of whole yen/cents)
+    expect(Math.round((yen / 150) * 100)).toBe(usdCents);
+  });
+
+  it('handles one bucket being empty', () => {
+    expect(computeNetWealth(0, 1_000_000, 150)).toEqual({
+      yen: 1_500_000,
+      usdCents: 1_000_000,
+    });
+    expect(computeNetWealth(300_000_000, 0, 150)).toEqual({
+      yen: 3_000_000,
+      usdCents: 2_000_000,
+    });
   });
 });
 

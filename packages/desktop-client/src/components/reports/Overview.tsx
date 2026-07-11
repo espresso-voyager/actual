@@ -51,9 +51,10 @@ import {
 
 import { NON_DRAGGABLE_AREA_CLASS_NAME } from './constants';
 import { DashboardHeader } from './DashboardHeader';
-import './overview.scss';
 import { DashboardSelector } from './DashboardSelector';
+import './overview.scss';
 import { LoadingIndicator } from './LoadingIndicator';
+import { NetWealthCard } from './NetWealthCard';
 import { AgeOfMoneyCard } from './reports/AgeOfMoneyCard';
 import { BalanceForecastCard } from './reports/BalanceForecastCard';
 import { BudgetAnalysisCard } from './reports/BudgetAnalysisCard';
@@ -753,6 +754,8 @@ export function Overview({ dashboard }: OverviewProps) {
         <LoadingIndicator message={t('Import is running...')} />
       ) : (
         <div>
+          {/* CUSTOM: dual-currency net wealth summary */}
+          <NetWealthCard />
           <View
             data-testid="reports-overview"
             innerRef={containerRef}
