@@ -29,8 +29,10 @@ import { SecondaryItem } from './SecondaryItem';
 
 const fontWeight = 600;
 
-// CUSTOM: compact "due M/D · amount" line under accounts with a statement
-// cycle configured (see components/accounts/CycleInfo.tsx for the config)
+// CUSTOM: compact statement-cycle lines under accounts with a cycle
+// configured (see components/accounts/CycleInfo.tsx for the config):
+//   due M/D · 23,000     ← last closed statement, and when it leaves
+//   this cycle · 12,000  ← accruing now, pays the following cycle
 function CycleDueLine({ account }: { account: AccountEntity }) {
   const format = useFormat();
   const [prefs] = useSyncedPrefs();
@@ -38,30 +40,35 @@ function CycleDueLine({ account }: { account: AccountEntity }) {
   const payDay = parseCycleDay(prefs[`cycle-pay-day-${account.id}`]);
   const amounts = useCycleAmounts(account.id, closeDay, payDay);
 
-  if (amounts == null || amounts.due === 0) {
+  if (amounts == null) {
     return null;
   }
   const [, m, d] = amounts.payDate.split('-');
+  const lineStyle = {
+    fontSize: 11,
+    color: theme.sidebarItemText,
+    opacity: 0.65,
+  };
   return (
     <View
       style={{
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
+        alignItems: 'flex-end',
         paddingRight: 15,
         marginTop: -4,
         marginBottom: 2,
       }}
     >
+      {amounts.due > 0 && (
+        <PrivacyFilter>
+          <Text style={lineStyle}>
+            due {parseInt(m, 10)}/{parseInt(d, 10)} ·{' '}
+            {format(amounts.due, 'financial')}
+          </Text>
+        </PrivacyFilter>
+      )}
       <PrivacyFilter>
-        <Text
-          style={{
-            fontSize: 11,
-            color: theme.sidebarItemText,
-            opacity: 0.65,
-          }}
-        >
-          due {parseInt(m, 10)}/{parseInt(d, 10)} ·{' '}
-          {format(amounts.due, 'financial')}
+        <Text style={lineStyle}>
+          this cycle · {format(amounts.accrual, 'financial')}
         </Text>
       </PrivacyFilter>
     </View>
