@@ -119,6 +119,21 @@ export function CycleInfo({ account }: CycleInfoProps) {
         >
           <Trans>Cancel</Trans>
         </Button>
+        {closeDay != null && payDay != null && (
+          <Button
+            variant="bare"
+            onPress={() => {
+              savePrefs({
+                [`cycle-close-day-${account.id}`]: '',
+                [`cycle-pay-day-${account.id}`]: '',
+              });
+              setEditing(false);
+            }}
+            style={{ fontSize: 12, color: theme.errorText }}
+          >
+            <Trans>Remove cycle</Trans>
+          </Button>
+        )}
       </View>
     );
   }
