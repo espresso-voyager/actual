@@ -29,6 +29,8 @@ type ButtonLinkProps = Omit<
 
 type InternalLinkProps = {
   to?: string;
+  // CUSTOM: navigation state forwarded to react-router (e.g. filterConditions)
+  state?: unknown;
   style?: CSSProperties;
   activeStyle?: CSSProperties;
   children?: ReactNode;
@@ -121,6 +123,7 @@ const ButtonLink = ({ to, style, activeStyle, ...props }: ButtonLinkProps) => {
 
 const InternalLink = ({
   to,
+  state,
   style,
   activeStyle,
   children,
@@ -133,6 +136,7 @@ const InternalLink = ({
   return (
     <NavLink
       to={path}
+      state={state}
       className={css([styles.smallText, style, match ? activeStyle : null])}
       onClick={e => {
         if (isDisabled) {

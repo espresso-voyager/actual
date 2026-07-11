@@ -278,13 +278,21 @@ export function Accounts() {
           <View key={name}>
             <Account
               name={displayName(name)}
-              to={
-                name === ON_BUDGET_GROUP
-                  ? '/accounts/onbudget'
-                  : name === INVESTMENTS_GROUP
-                    ? '/accounts/offbudget'
-                    : '/accounts'
-              }
+              /* CUSTOM: group pages show exactly the group's member
+                 accounts via a pre-filtered All Accounts view — NOT the
+                 old on/off-budget pseudo pages, which ignore grouping */
+              to="/accounts"
+              linkState={{
+                filterName: displayName(name),
+                filterConditions: [
+                  {
+                    field: 'account',
+                    op: 'oneOf',
+                    value:
+                      items.length > 0 ? items.map(a => a.id) : ['__empty__'],
+                  },
+                ],
+              }}
               query={bindings.accountSetBalance(
                 groupKey(name, items),
                 items.length > 0 ? items.map(a => a.id) : ['__empty__'],
@@ -295,9 +303,7 @@ export function Accounts() {
                 marginBottom: 5,
               }}
               titleAccount
-              isExactPathMatch={
-                name !== ON_BUDGET_GROUP && name !== INVESTMENTS_GROUP
-              }
+              isExactPathMatch
               dropGroupId={`group:${name}`}
               onDrop={onReorder}
               onDragChange={onDragChange}

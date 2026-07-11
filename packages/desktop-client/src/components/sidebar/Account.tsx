@@ -52,6 +52,8 @@ export const accountNameStyle: CSSProperties = {
 type AccountProps<FieldName extends SheetFields<'account'>> = {
   name: string;
   to: string;
+  // CUSTOM: navigation state for the link (e.g. group filterConditions)
+  linkState?: unknown;
   query: Binding<'account', FieldName>;
   account?: AccountEntity;
   connected?: boolean;
@@ -81,6 +83,7 @@ export function Account<FieldName extends SheetFields<'account'>>({
   failed,
   updated,
   to,
+  linkState,
   query,
   style,
   outerStyle,
@@ -194,6 +197,7 @@ export function Account<FieldName extends SheetFields<'account'>>({
           <Link
             variant="internal"
             to={to}
+            state={linkState}
             isDisabled={isEditing}
             isExactPathMatch={isExactPathMatch}
             style={{
