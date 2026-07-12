@@ -1,8 +1,11 @@
 // CUSTOM: live statement-cycle amounts for an account (M2). Splits the
 // account's owed balance into "statement due" (last closed cycle, minus
 // payments made since) and "current accrual" (new spending since the close).
+// Recomputes whenever the transactions table changes (sync events), so the
+// sidebar/header stay current as entries are added or edited.
 import { useEffect, useState } from 'react';
 
+import { listen } from '@actual-app/core/platform/client/connection';
 import { q } from '@actual-app/core/shared/query';
 
 import { aqlQuery } from '#queries/aqlQuery';
@@ -64,15 +67,23 @@ export function useCycleAmounts(
     }
     let cancelled = false;
     async function run() {
-      // Recomputed on mount; typing in this render cycle's params is guarded
       const amounts = await fetchCycleAmounts(accountId!, closeDay!, payDay!);
       if (!cancelled) {
         setResult(amounts);
       }
     }
     void run();
+    const unlisten = listen('sync-event', event => {
+      if (
+        (event.type === 'applied' || event.type === 'success') &&
+        event.tables?.includes('transactions')
+      ) {
+        void run();
+      }
+    });
     return () => {
       cancelled = true;
+      unlisten();
     };
   }, [accountId, closeDay, payDay]);
 
