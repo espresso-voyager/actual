@@ -3,9 +3,12 @@
 // spreadsheet style:
 //
 //   Available funds  — income available this month (stock binding)
-//   Family           — owed on accounts tagged 'family' + envelope balance
-//                      of the category group named "Family" (e.g. Rent)
-//   Personal         — owed on accounts tagged 'personal' + group "Personal"
+//   Family           — NEXT PAYMENT on accounts tagged 'family' (statement
+//                      due when a cycle is configured, else full owed
+//                      balance) + envelope balance of the category group
+//                      named "Family" (e.g. Rent). This is the amount to
+//                      park in the bank the debit comes from.
+//   Personal         — same for accounts tagged 'personal' + group "Personal"
 //   Savings          — envelope balance of the category group named "Savings"
 //
 // Accounts are tagged from the account header ("Add to recap" toggle);
@@ -21,6 +24,10 @@ import { styles } from '@actual-app/components/styles';
 import { View } from '@actual-app/components/view';
 import { q } from '@actual-app/core/shared/query';
 
+import {
+  fetchCycleAmounts,
+  parseCycleDay,
+} from '#components/accounts/useCycleAmounts';
 import { EnvelopeCellValue } from '#components/budget/envelope/EnvelopeBudgetComponents';
 import { PrivacyFilter } from '#components/PrivacyFilter';
 import { CellValueText } from '#components/spreadsheet/CellValue';
@@ -72,7 +79,11 @@ export function RecapList({ style }: RecapListProps) {
   const { data: { grouped: categoryGroups } = { grouped: [] } } =
     useCategories();
   const [prefs] = useSyncedPrefs();
-  const [balances, setBalances] = useState<Map<string, number>>(new Map());
+  const [buckets, setBuckets] = useState({ family: 0, personal: 0 });
+
+  const familyIds = accountIdsForBucket(accounts, prefs, 'family');
+  const personalIds = accountIdsForBucket(accounts, prefs, 'personal');
+  const bucketKey = JSON.stringify([familyIds, personalIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,28 +94,44 @@ export function RecapList({ style }: RecapListProps) {
           .groupBy('account')
           .select(['account', { amount: { $sum: '$amount' } }]),
       );
-      if (!cancelled) {
-        const map = new Map<string, number>();
-        for (const row of data as Array<{ account: string; amount: number }>) {
-          map.set(row.account, row.amount ?? 0);
+      const balances = new Map<string, number>();
+      for (const row of data as Array<{ account: string; amount: number }>) {
+        balances.set(row.account, row.amount ?? 0);
+      }
+
+      // Per tagged account: the NEXT payment (statement due) when a cycle is
+      // configured, otherwise the full owed balance.
+      async function bucketTotal(ids: string[]): Promise<number> {
+        let total = 0;
+        for (const id of ids) {
+          const closeDay = parseCycleDay(prefs[`cycle-close-day-${id}`]);
+          const payDay = parseCycleDay(prefs[`cycle-pay-day-${id}`]);
+          if (closeDay != null && payDay != null) {
+            total += (await fetchCycleAmounts(id, closeDay, payDay)).due;
+          } else {
+            total += owedCents([id], balances);
+          }
         }
-        setBalances(map);
+        return total;
+      }
+
+      const [family, personal] = await Promise.all([
+        bucketTotal(familyIds),
+        bucketTotal(personalIds),
+      ]);
+      if (!cancelled) {
+        setBuckets({ family, personal });
       }
     }
     void run();
     return () => {
       cancelled = true;
     };
-  }, [accounts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bucketKey, prefs]);
 
-  const familyOwed = owedCents(
-    accountIdsForBucket(accounts, prefs, 'family'),
-    balances,
-  );
-  const personalOwed = owedCents(
-    accountIdsForBucket(accounts, prefs, 'personal'),
-    balances,
-  );
+  const familyOwed = buckets.family;
+  const personalOwed = buckets.personal;
 
   const familyGroupId = findGroupIdByName(categoryGroups, 'Family');
   const personalGroupId = findGroupIdByName(categoryGroups, 'Personal');

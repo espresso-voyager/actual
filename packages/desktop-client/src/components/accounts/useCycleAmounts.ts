@@ -29,6 +29,27 @@ async function sumAmounts(
   return (data as number | null) ?? 0;
 }
 
+/** One-shot fetch of the cycle split for an account (also used outside hooks). */
+export async function fetchCycleAmounts(
+  accountId: string,
+  closeDay: number,
+  payDay: number,
+): Promise<CycleAmounts> {
+  const close = lastCloseDate(new Date(), closeDay);
+  const pay = nextPayDate(close, payDay);
+  const [throughClose, paymentsAfter, chargesAfter] = await Promise.all([
+    sumAmounts(accountId, { date: { $lte: close } }),
+    sumAmounts(accountId, { date: { $gt: close }, amount: { $gt: 0 } }),
+    sumAmounts(accountId, { date: { $gt: close }, amount: { $lt: 0 } }),
+  ]);
+  const { due, accrual } = computeCycleAmounts(
+    throughClose,
+    paymentsAfter,
+    chargesAfter,
+  );
+  return { due, accrual, closeDate: close, payDate: pay };
+}
+
 export function useCycleAmounts(
   accountId: string | undefined,
   closeDay: number | null,
@@ -44,20 +65,9 @@ export function useCycleAmounts(
     let cancelled = false;
     async function run() {
       // Recomputed on mount; typing in this render cycle's params is guarded
-      const close = lastCloseDate(new Date(), closeDay!);
-      const pay = nextPayDate(close, payDay!);
-      const [throughClose, paymentsAfter, chargesAfter] = await Promise.all([
-        sumAmounts(accountId!, { date: { $lte: close } }),
-        sumAmounts(accountId!, { date: { $gt: close }, amount: { $gt: 0 } }),
-        sumAmounts(accountId!, { date: { $gt: close }, amount: { $lt: 0 } }),
-      ]);
+      const amounts = await fetchCycleAmounts(accountId!, closeDay!, payDay!);
       if (!cancelled) {
-        const { due, accrual } = computeCycleAmounts(
-          throughClose,
-          paymentsAfter,
-          chargesAfter,
-        );
-        setResult({ due, accrual, closeDate: close, payDate: pay });
+        setResult(amounts);
       }
     }
     void run();
