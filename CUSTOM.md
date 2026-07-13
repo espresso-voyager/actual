@@ -140,3 +140,23 @@ corepack yarn install     # yarn 4 via corepack; Node >= 22.18 (see .nvmrc)
 corepack yarn start:browser   # dev server on http://localhost:3001
 corepack yarn test        # full suite (lage across workspaces)
 ```
+
+## Custom diffs (M5 — Payday page + Categories & Tags)
+
+**Payday page** (`/payday`, sidebar item under Budget) — the payday allocation ritual as a live screen, replacing the spreadsheet row AND the envelope "To Budget" workflow (designed to pair with tracking budget mode):
+
+- Sections in order: Income received this month (income-category sum) → **Rent** (editable planned amount) → **Family obligations** → **Personal obligations** → **Remaining** → **Savings buckets** with editable planned amounts and an Unallocated line.
+- Obligations = accounts tagged family/personal ("Add to recap"); each shows its statement due + due date (cycle engine) or full owed balance if no cycle. One **combined transfer per section** ("park in: [bank]" + Record transfer) — creates a real categoryless transfer dated today from the configured source bank.
+- Savings buckets mirror the category group named "Savings" — edit the group, the page follows. Planned amounts are synced prefs (`payday-plan-*`), whole yen.
+- Account choices persist: `payday-from-account`, `payday-dest-family`, `payday-dest-personal`.
+- Live: refreshes on transaction sync events; recorded transfers drop the dues immediately.
+
+**Categories & Tags page** (`/organize`, sidebar item) — one screen managing both side by side: left pane lists category groups/categories with inline rename, add (group or category), and delete (reuses upstream's safe delete flows incl. the transfer-transactions modal); right pane embeds upstream's ManageTags.
+
+| File                                                                | Change                                       |
+| ------------------------------------------------------------------- | -------------------------------------------- |
+| `packages/desktop-client/src/components/payday/PaydayPage.tsx`      | The Payday page.                             |
+| `packages/desktop-client/src/components/organize/OrganizePage.tsx`  | Categories & Tags page.                      |
+| `packages/desktop-client/src/components/FinancesApp.tsx`            | Routes `/payday`, `/organize`.               |
+| `packages/desktop-client/src/components/sidebar/PrimaryButtons.tsx` | Sidebar items "Payday", "Categories & Tags". |
+| `packages/loot-core/src/types/prefs.ts`                             | Payday pref keys.                            |

@@ -51,6 +51,11 @@ export type SyncedPrefs = Partial<
     // CUSTOM: statement cycle (M2): close day 1-31 (31=end of month), pay day
     | `cycle-close-day-${string}`
     | `cycle-pay-day-${string}`
+    // CUSTOM: Payday page — planned amounts (whole yen) and account choices
+    | `payday-plan-${string}`
+    | 'payday-from-account'
+    | 'payday-dest-family'
+    | 'payday-dest-personal'
     // CUSTOM: sidebar group name for an account (top-level sidebar grouping)
     | `sidebar-section-${string}`
     // CUSTOM: JSON array of user-created sidebar group names (also the order)

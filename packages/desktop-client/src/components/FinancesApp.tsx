@@ -33,7 +33,9 @@ import { MobileBankSyncAccountEditPage } from './mobile/banksync/MobileBankSyncA
 import { MobileNavTabs } from './mobile/MobileNavTabs';
 import { TransactionEdit } from './mobile/transactions/TransactionEdit';
 import { Notifications } from './Notifications';
+import { OrganizePage } from './organize/OrganizePage';
 import { MobilePageHeaderProvider, MobilePageHeaderSlot } from './Page';
+import { PaydayPage } from './payday/PaydayPage';
 import { Reports } from './reports';
 import { LoadingIndicator } from './reports/LoadingIndicator';
 import { NarrowAlternate, WideComponent } from './responsive';
@@ -335,6 +337,9 @@ export function FinancesApp() {
                     }
                   />
                   <Route path="/tags" element={<ManageTagsPage />} />
+                  {/* CUSTOM: payday allocation + combined categories/tags */}
+                  <Route path="/payday" element={<PaydayPage />} />
+                  <Route path="/organize" element={<OrganizePage />} />
                   <Route path="/settings" element={<Settings />} />
 
                   <Route

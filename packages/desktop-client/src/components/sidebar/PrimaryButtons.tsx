@@ -49,6 +49,9 @@ export function PrimaryButtons() {
   return (
     <View style={{ flexShrink: 0 }}>
       <Item title={t('Budget')} Icon={SvgWallet} to="/budget" />
+      {/* CUSTOM: payday allocation page + categories/tags manager */}
+      <Item title={t('Payday')} Icon={SvgCreditCard} to="/payday" />
+      <Item title={t('Categories & Tags')} Icon={SvgTag} to="/organize" />
       <Item title={t('Reports')} Icon={SvgReports} to="/reports" />
       <Item title={t('Schedules')} Icon={SvgCalendar3} to="/schedules" />
       <Item
